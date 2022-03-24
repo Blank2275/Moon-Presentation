@@ -9,6 +9,10 @@ app.get("/client.js", function (req, res) {
     res.sendFile(__dirname + "/client.js");
 });
 
+app.get("/presentation.js", function (req, res) {
+    res.sendFile(__dirname + "/presentation.js");
+});
+
 app.get("/moon-texture", function (req, res) {
     res.sendFile(__dirname + "/moon.jpeg");
 });
