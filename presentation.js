@@ -7,13 +7,28 @@ class Presentation{
         this.startLerpAngle = [0, 0];
         this.rotateSpeed = 0.03;
         this.r = 40;
-        this.closeR = 30;
-        this.farR = 50;
+        this.closeR = 23;
+        this.farR = 40;
+        this.maxRChangeSpeed = 2;
+        this.defaultCloseR = this.closeR;
+        this.defaultFarR = this.farR;
         this.camera = camera;
         this.lerpCutoff = 0.001;
         this.stop = 0;
+        this.presentationData = [];
+        this.rotateIdleSpeed = 0.001;
+        this.mode = "point";
         
         this.setStartingLocation();
+        this.getPresentationData().then(() => this.present());
+    }
+    async getPresentationData() {
+        await fetch("/stops")
+        .then(response => response.json())
+        .then(data => this.presentationData = data);
+    }
+    present(){
+        document.getElementById("presentation").innerHTML = this.presentationData[this.stop];
     }
     setStartingLocation() {
         var coords = this.stops[0]["coords"];
@@ -28,10 +43,20 @@ class Presentation{
         }
         var stop = this.stops[this.stop];
         var coord = stop["coords"];
-        this.smoothZoomToPoint(coord[0], coord[1]);
+        
+        this.mode = stop["mode"];
+        this.closeR = stop["closeR"] || this.defaultCloseR;
+        this.farR = stop["farR"] || this.defaultFarR;
+        
+        if(this.mode == "point"){
+            this.smoothZoomToPoint(coord[0], coord[1]);
+        } else {
+            this.smoothZoomToPoint(this.currentAngle[1], 2048);
+        }
+        this.present();
     }
     update(){//update every frame
-        this.lerpToTargetAngle(this.currentAngle, this.targetAngle, this.rotateSpeed);
+        this.updateAngle(this.currentAngle, this.targetAngle, this.rotateSpeed);
         this.setCameraFromAngle(this.currentAngle, this.r);
     }
     //utility functions
@@ -41,7 +66,7 @@ class Presentation{
         this.camera.lookAt(0, 0, 0);
     }
 
-    lerpToTargetAngle(current, target, rotateSpeed){
+    updateAngle(current, target, rotateSpeed){
         if(current != target){
             var currentAlt = current[0];
             var currentAz = current[1];
@@ -52,7 +77,10 @@ class Presentation{
             //pf = percent finished
             var pf = Math.abs(currentAz - this.startLerpAngle[1]) / Math.abs(targetAz - this.startLerpAngle[1]);
             var h = pf * (pf - 1) * (this.farR - this.closeR) * -4 + this.closeR;
-            this.r = h;
+            //this.r = h; // too sudden in some situations
+            var diff = h - this.r;
+            if(diff < 0) {this.r += Math.max(diff, -this.maxRChangeSpeed)}
+            else {this.r += Math.min(diff, this.maxRChangeSpeed)}
             
             this.currentAngle[0] = this.lerp(currentAlt, targetAlt, rotateSpeed);
             this.currentAngle[1] = this.lerp(currentAz, targetAz, rotateSpeed);
@@ -60,6 +88,17 @@ class Presentation{
             var dist = this.angleDistance(currentAlt, currentAz, targetAlt, targetAz);
             if(dist < this.lerpCutoff){
                 this.currentAngle = target;
+            }
+        } 
+            //spin around
+        if(this.mode == "rotate"){
+            this.targetAngle[1] += this.rotateIdleSpeed;
+            this.currentAngle[1] += this.rotateIdleSpeed;
+            this.startLerpAngle[1] += this.rotateIdleSpeed;
+            if(this.currentAngle[1] > Math.PI * 2) {
+                this.targetAngle[1] -= Math.PI * 2;
+                this.currentAngle[1] -= Math.PI * 2;
+                this.startLerpAngle[1] -= Math.PI * 2;
             }
         }
     }
