@@ -49,11 +49,12 @@ renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 //populate scene
-var geometry = new THREE.SphereGeometry(10, 90, 90);
+var geometry = new THREE.SphereGeometry(10, 270, 270);
 var texture = loader.load("/moon-texture");
 var displacement = loader.load("/moon-displacement");
-var cover = new THREE.MeshPhongMaterial({map:texture, displacementMap:displacement, displacementScale:3});
+var cover = new THREE.MeshPhongMaterial({map:texture, displacementMap:displacement, displacementScale:2});
 var mesh = new THREE.Mesh(geometry, cover);
+mesh.rotation.y = Math.PI / 2;
 mesh.castShadow = true;
 mesh.receiveShadow = true;
 scene.add(mesh);
@@ -73,11 +74,11 @@ var presentation = new Presentation({
             "coords": [2700, 1700],
             "mode":"point"
         }, 
-                {
+        {
             "coords": [400, 1300],
             "mode":"point"
         },
-                {
+        {
             "coords": [500, 3200],
             "mode":"point", 
             "closeR": 15,
@@ -85,6 +86,10 @@ var presentation = new Presentation({
         }, 
         {
             "mode": "rotate"
+        }, 
+        {
+            "mode": "point", 
+            "coords": [1900, 2400]
         }
     ]
 }, camera);

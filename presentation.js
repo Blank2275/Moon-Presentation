@@ -19,6 +19,14 @@ class Presentation{
         this.rotateIdleSpeed = 0.001;
         this.mode = "point";
         
+        this.targetFreePosition = [0, 0, 0];
+        this.currentFreePosition = [0, 0, 0];
+        this.currentLookAtLocation = [0, 0, 0];
+        this.targetLookAtLocation = [0, 0, 0];
+        this.distCutoff = 0.5;
+        this.panSpeed = 0.03;
+        this.lastModeFree = false;
+        
         this.setStartingLocation();
         this.getPresentationData().then(() => this.present());
     }
@@ -36,6 +44,8 @@ class Presentation{
         this.camera.lookAt(0, 0, 0);
     }
     nextStop(){
+        const previousMode = this.mode;
+        this.transitionToFocused = false;
         if(this.stop < this.stops.length - 1){
             this.stop += 1;
         } else {
@@ -49,15 +59,95 @@ class Presentation{
         this.farR = stop["farR"] || this.defaultFarR;
         
         if(this.mode == "point"){
-            this.smoothZoomToPoint(coord[0], coord[1]);
-        } else {
-            this.smoothZoomToPoint(this.currentAngle[1], 2048);
+            // if(this.lastModeFree == true){
+            //     this.freeToFocused();
+            // } else{
+                this.smoothZoomToPoint(coord[0], coord[1]);
+            //}
+            
+        } else if(this.mode == "rotate") {
+            // if(this.lastModeFree = true){
+            //     this.freeToFocused();
+            // } else{
+            //     console.log("lol")
+                this.smoothZoomToPoint(this.currentAngle[1], 2048);
+            //}
+            
+        } else if(this.mode == "free"){
+            this.targetFreePosition = stop["coords"];
+            this.currentFreePosition = [camera.position.x, camera.position.y, camera.position.z];
+            this.targetLookAtLocation = stop["lookAt"];
         }
         this.present();
+        this.lastModeFree = false;
+    }
+    freeToFocused(){
+            var angle = this.point2angle(4000, 2048, 8192, 4096);
+            var pos = this.altaz2xyz(angle[0], angle[1], this.r);
+            this.targetFreePosition = pos;
+            this.currentFreePosition = [camera.position.x, camera.position.y, camera.position.z];
+            this.targetLookAtLocation = [0, 0, 0];
+            this.transitionToFocused = true;
+            this.mode = "free";
+            
     }
     update(){//update every frame
         this.updateAngle(this.currentAngle, this.targetAngle, this.rotateSpeed);
-        this.setCameraFromAngle(this.currentAngle, this.r);
+        //this.updateFreePosition(this.currentFreePosition, this.targetFreePosition, this.panSpeed);
+        if(this.mode == "point" || this.mode == "rotate"){
+            this.setCameraFromAngle(this.currentAngle, this.r);
+        } else if(this.mode == "free"){
+            this.setCameraFromPosition();
+        }
+        
+    }
+    updateFreePosition(current, target, panSpeed) {
+        if(current != target){
+            var currentX = current[0];
+            var currentY = current[1];
+            var currentZ = current[2];
+            var targetX = target[0];
+            var targetY = target[1];
+            var targetZ = target[2];
+            
+            this.currentFreePosition[0] = this.lerp(currentX, targetX, panSpeed);
+            this.currentFreePosition[1] = this.lerp(currentY, targetY, panSpeed);
+            this.currentFreePosition[2] = this.lerp(currentZ, targetZ, panSpeed);
+            
+            //lerp lookat location
+            current = this.currentLookAtLocation;
+            target = [...this.targetLookAtLocation];
+            var currentX = current[0];
+            var currentY = current[1];
+            var currentZ = current[2];
+            var targetX = target[0];
+            var targetY = target[1];
+            var targetZ = target[2];
+            
+            this.currentLookAtLocation[0] = this.lerp(currentX, targetX, panSpeed);
+            this.currentLookAtLocation[1] = this.lerp(currentY, targetY, panSpeed);
+            this.currentLookAtLocation[2] = this.lerp(currentZ, targetZ, panSpeed);
+            
+            var dist = this.distance3D(currentX, currentY, currentZ, targetX, targetY, targetZ);
+            if(dist < this.distCutoff){
+                this.currentFreePosition = this.targetFreePosition;
+                this.currentLookAtLocation = this.targetLookAtLocation;
+                
+                if(this.transitionToFocused == true){
+                    this.mode == "point";
+                    this.lastModeFree = true;
+                    this.transitionToFocused = false;
+                    console.log("test")
+                }
+                
+            }
+        } 
+    }
+    setCameraFromPosition(){
+        var pos = this.currentFreePosition;
+        camera.position.set(pos[0], pos[1], pos[2]);
+        var lookPos = this.currentLookAtLocation;
+        camera.lookAt(lookPos[0], lookPos[1], lookPos[2]);
     }
     //utility functions
     setCameraFromAngle(currentAngle, r) {
@@ -129,7 +219,7 @@ class Presentation{
         //var relativeX = x - width / -2;
         var relativeY = (y - height / 2) * -1;
         
-        var az = (x - width / 2) / width * 2 * Math.PI;
+        var az = (x - width / 2) / width * 2 * Math.PI + Math.PI / 2;
         var alt = Math.asin(relativeY / height * 2);
         return [alt, az];
     }
@@ -150,5 +240,8 @@ class Presentation{
         var ydp = yp;
 
         return [xdp, ydp, zdp];
+    }
+    distance3D(x1, y1, z1, x2, y2, z2) {
+        return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2));
     }
 }
