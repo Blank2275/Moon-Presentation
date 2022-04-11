@@ -85,8 +85,12 @@ var presentation = new Presentation({
             "farR": 30
         }, 
         {
-            "mode": "rotate"
+            "mode": "rotate", 
+            "speed": 0.003
         }, 
+        {
+            "mode": "rotate"
+        },
         {
             "mode": "point", 
             "coords": [1900, 2400]
@@ -104,7 +108,9 @@ function animate() {
 }
 
 function keyup(e){
-    if (e.keyCode === 32){//space
-        presentation.nextStop();
+    if (e.keyCode === 39){//space
+        presentation.changeStop(1);
+    } else if (e.keyCode === 37){
+        presentation.changeStop(-1);
     }
 }

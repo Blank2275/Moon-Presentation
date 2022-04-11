@@ -43,13 +43,14 @@ class Presentation{
         this.zoomToPoint(coords[0], coords[1], 8192, 4096, this.closeR);
         this.camera.lookAt(0, 0, 0);
     }
-    nextStop(){
+    changeStop(n){
         const previousMode = this.mode;
         this.transitionToFocused = false;
-        if(this.stop < this.stops.length - 1){
-            this.stop += 1;
-        } else {
+        this.stop += n;
+        if(this.stop >= this.stops.length){
             this.stop = 0;
+        } else if(this.stop < 0){
+            this.stop = this.stops.length - 1;
         }
         var stop = this.stops[this.stop];
         var coord = stop["coords"];
@@ -70,7 +71,8 @@ class Presentation{
             //     this.freeToFocused();
             // } else{
             //     console.log("lol")
-                this.smoothZoomToPoint(this.currentAngle[1], 2048);
+                this.rotateIdleSpeed = stop["speed"] || 0.001;
+                this.smoothZoomToPoint(this.az2x(this.currentAngle[1]), 2048);
             //}
             
         } else if(this.mode == "free"){
@@ -137,7 +139,6 @@ class Presentation{
                     this.mode == "point";
                     this.lastModeFree = true;
                     this.transitionToFocused = false;
-                    console.log("test")
                 }
                 
             }
@@ -205,7 +206,6 @@ class Presentation{
         this.targetAngle = this.point2angle(x, y, width, height);
         this.startLerpAngle = [...this.currentAngle];
     }
-
     zoomToPoint(x, y, width = 8192, height = 4096, r = 50) {
         var angle = this.point2angle(x, y, width, height);
         var pos = this.altaz2xyz(angle[0], angle[1], r);
@@ -214,7 +214,12 @@ class Presentation{
         this.camera.position.set(pos[0], pos[1], pos[2]);
         this.camera.lookAt(0, 0, 0);
     }
-
+    az2x(az){
+        let theta = (az - Math.PI / 2) / (2 * Math.PI);
+        let x = theta * width + width;
+        console.log(x)
+        return x;
+    }
     point2angle(x, y, width, height) {
         //var relativeX = x - width / -2;
         var relativeY = (y - height / 2) * -1;
